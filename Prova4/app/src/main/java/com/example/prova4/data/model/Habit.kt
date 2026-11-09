@@ -1,5 +1,6 @@
 package com.example.prova4.data.model
 
+import java.time.DayOfWeek
 import java.time.LocalDate
 
 enum class HabitPeriod {
@@ -15,7 +16,7 @@ data class Habit(
     val title: String,
     val description: String = "",
     val category: String = "Geral",
-    val frequency: String = "Todo dia", // "Todo dia", "Dias úteis", "Fim de semana", "Somente hoje"
+    val frequency: String = "Todo dia", // Options: "Todo dia", "Dias úteis", "Fim de semana", "Somente hoje"
     val createdAt: LocalDate = LocalDate.now(),
     val periods: List<HabitPeriod> = listOf(HabitPeriod.MANHA),
     val type: HabitType = HabitType.SIMPLES,
@@ -30,3 +31,20 @@ data class Habit(
     val durationMinutes: Int = 0, // Suporte completo para telas baseadas em timer
     val unit: String = ""
 )
+
+/**
+ * Função utilitária para verificar se o hábito deve aparecer em uma determinada data selecionada.
+ */
+fun matchesFrequency(frequency: String, targetDate: LocalDate, creationDate: LocalDate): Boolean {
+    // Não exibe o hábito em datas anteriores à sua data de criação
+    if (targetDate.isBefore(creationDate)) return false
+
+    val dayOfWeek = targetDate.dayOfWeek
+    return when (frequency.trim().lowercase()) {
+        "todo dia", "todos os dias" -> true
+        "dias úteis", "dias uteis" -> dayOfWeek in DayOfWeek.MONDAY..DayOfWeek.FRIDAY
+        "fim de semana", "fins de semana" -> dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY
+        "somente hoje" -> targetDate == creationDate
+        else -> true
+    }
+}

@@ -7,10 +7,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.prova4.ui.home.HomeViewModel
 
 @Composable
 fun AuthScreen(
     authViewModel: AuthViewModel,
+    homeViewModel: HomeViewModel,
     onAuthSuccess: () -> Unit
 ) {
     var isRegisterMode by remember { mutableStateOf(false) }
@@ -23,6 +25,21 @@ fun AuthScreen(
 
     LaunchedEffect(uiState) {
         if (uiState is AuthUiState.Success) {
+            // Busca o usuário logado diretamente do repositório/Firebase
+            val currentUserData = authViewModel.getCurrentUserData()
+
+            val finalName = if (isRegisterMode) {
+                name.ifBlank { currentUserData?.name ?: email.substringBefore("@") }
+            } else {
+                currentUserData?.name?.ifBlank { email.substringBefore("@") } ?: "Usuário"
+            }
+
+            val finalEmail = currentUserData?.email?.ifBlank { email } ?: email
+
+            homeViewModel.updateUserProfile(
+                newName = finalName,
+                newEmail = finalEmail
+            )
             onAuthSuccess()
         }
     }
@@ -38,7 +55,6 @@ fun AuthScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Títulos dinâmicos com base no protótipo (Login / Cadastro)
             Text(
                 text = if (isRegisterMode) "Crie sua conta" else "Bem-vindo de volta",
                 style = MaterialTheme.typography.headlineLarge
@@ -106,7 +122,9 @@ fun AuthScreen(
                             authViewModel.login(email, password)
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
                 ) {
                     Text(if (isRegisterMode) "Registrar" else "Entrar")
                 }

@@ -3,6 +3,8 @@ package com.example.prova4.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.prova4.data.model.Habit
+import com.example.prova4.data.model.matchesFrequency
+import com.example.prova4.data.repository.AuthRepository
 import com.example.prova4.data.repository.HabitRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,8 +15,8 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 
 data class HomeUiState(
-    val userName: String = "Sâmara",
-    val userEmail: String = "samara@email.com",
+    val userName: String = "Usuário",
+    val userEmail: String = "",
     val selectedDate: LocalDate = LocalDate.now(),
     val weekStartDate: LocalDate = LocalDate.now(),
     val completedCount: Int = 0,
@@ -26,7 +28,8 @@ data class HomeUiState(
 )
 
 class HomeViewModel(
-    private val repository: HabitRepository = HabitRepository()
+    private val repository: HabitRepository = HabitRepository(),
+    private val authRepository: AuthRepository = AuthRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -36,7 +39,22 @@ class HomeViewModel(
         val today = LocalDate.now()
         val currentSunday = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
         _uiState.update { it.copy(selectedDate = today, weekStartDate = currentSunday) }
+
+        // Carrega os dados reais do usuário do Firebase ao inicializar
+        loadUserDataFromFirebase()
         observeData()
+    }
+
+    fun loadUserDataFromFirebase() {
+        val userData = authRepository.getCurrentUserData()
+        if (userData != null) {
+            _uiState.update { state ->
+                state.copy(
+                    userName = userData.name.ifBlank { "Usuário" },
+                    userEmail = userData.email
+                )
+            }
+        }
     }
 
     private fun observeData() {
@@ -55,25 +73,23 @@ class HomeViewModel(
     }
 
     private fun updateHabitsForSelectedDate(allHabits: List<Habit>, date: LocalDate) {
-        val dayOfWeek = date.dayOfWeek
-        val isWeekend = dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY
-        val isWeekday = !isWeekend
-
-        // Filtragem baseada na frequência escolhida e na data selecionada no calendário
         val filteredByFrequency = allHabits.filter { habit ->
-            when (habit.frequency.lowercase().trim()) {
-                "dias úteis", "segunda a sexta" -> isWeekday
-                "fim de semana", "fins de semana", "sábado e domingo" -> isWeekend
-                "somente hoje", "1 dia" -> habit.createdAt == date || date == LocalDate.now()
-                else -> true // "Todo dia"
-            }
+            matchesFrequency(
+                frequency = habit.frequency,
+                targetDate = date,
+                creationDate = habit.createdAt
+            )
         }.map { habit ->
             val streak = calculateStreak(habit.completedDates, date)
-            habit.copy(streakDays = streak)
+            val isCompletedOnDate = habit.completedDates.contains(date)
+            habit.copy(
+                streakDays = streak,
+                isCompletedToday = isCompletedOnDate
+            )
         }
 
-        val pending = filteredByFrequency.filter { !it.completedDates.contains(date) && !it.isCompletedToday }
-        val completed = filteredByFrequency.filter { it.completedDates.contains(date) || it.isCompletedToday }
+        val pending = filteredByFrequency.filter { !it.isCompletedToday }
+        val completed = filteredByFrequency.filter { it.isCompletedToday }
 
         val totalCompleted = completed.size
         val highestStreak = allHabits.maxOfOrNull { calculateStreak(it.completedDates, date) } ?: 0
@@ -89,7 +105,6 @@ class HomeViewModel(
         }
     }
 
-    // Calcula dias seguidos sem pular (Streak)
     fun calculateStreak(completedDates: List<LocalDate>, refDate: LocalDate = LocalDate.now()): Int {
         var streak = 0
         var checkDate = refDate
@@ -105,15 +120,6 @@ class HomeViewModel(
         return streak
     }
 
-    // Calcula a porcentagem de conclusão nos últimos 30 dias a partir da data de referência
-    fun calculate30DaysPercentage(completedDates: List<LocalDate>, refDate: LocalDate = LocalDate.now()): Int {
-        val startDate = refDate.minusDays(29)
-        val countInPeriod = completedDates.count { date ->
-            !date.isBefore(startDate) && !date.isAfter(refDate)
-        }
-        return ((countInPeriod.toFloat() / 30f) * 100).toInt().coerceIn(0, 100)
-    }
-
     fun selectDate(date: LocalDate) {
         _uiState.update { it.copy(selectedDate = date) }
         updateHabitsForSelectedDate(repository.habits.value, date)
@@ -127,13 +133,22 @@ class HomeViewModel(
         _uiState.update { state -> state.copy(weekStartDate = state.weekStartDate.plusWeeks(1)) }
     }
 
+    // Atualiza nome de exibição localmente e no Firebase de forma assíncrona
+    fun updateUserName(newName: String) {
+        _uiState.update { it.copy(userName = newName) }
+        viewModelScope.launch {
+            authRepository.updateProfile(newName)
+        }
+    }
+
+    // Atualiza o estado da UI com nome e e-mail
     fun updateUserProfile(newName: String, newEmail: String) {
         _uiState.update { it.copy(userName = newName, userEmail = newEmail) }
     }
 
     fun toggleHabitCompletion(habitId: String) {
         viewModelScope.launch {
-            repository.toggleHabitCompletion(habitId)
+            repository.toggleHabitCompletion(habitId, _uiState.value.selectedDate)
         }
     }
 
@@ -141,5 +156,13 @@ class HomeViewModel(
         viewModelScope.launch {
             repository.deleteHabit(habitId)
         }
+    }
+
+    fun addCategory(category: String) {
+        repository.addCategory(category)
+    }
+
+    fun deleteCategory(category: String) {
+        repository.deleteCategory(category)
     }
 }

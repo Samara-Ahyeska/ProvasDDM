@@ -21,8 +21,9 @@ class HabitRepository {
     val categories: StateFlow<List<String>> = _categories.asStateFlow()
 
     fun addCategory(category: String) {
-        if (category.isNotBlank() && !_categories.value.contains(category)) {
-            _categories.update { it + category }
+        val trimmed = category.trim()
+        if (trimmed.isNotBlank() && !_categories.value.contains(trimmed)) {
+            _categories.update { it + trimmed }
         }
     }
 
@@ -54,19 +55,25 @@ class HabitRepository {
         }
     }
 
-    fun toggleHabitCompletion(habitId: String) {
-        val today = LocalDate.now()
+    /**
+     * Alterna a conclusão do hábito considerando a data alvo selecionada no calendário
+     */
+    fun toggleHabitCompletion(habitId: String, targetDate: LocalDate = LocalDate.now()) {
         _habits.update { currentList ->
             currentList.map { habit ->
                 if (habit.id == habitId) {
-                    val isCompleted = !habit.isCompletedToday
-                    val updatedDates = if (isCompleted) {
-                        if (!habit.completedDates.contains(today)) habit.completedDates + today else habit.completedDates
+                    val isAlreadyCompleted = habit.completedDates.contains(targetDate) ||
+                            (targetDate == LocalDate.now() && habit.isCompletedToday)
+
+                    val updatedDates = if (isAlreadyCompleted) {
+                        habit.completedDates - targetDate
                     } else {
-                        habit.completedDates - today
+                        if (!habit.completedDates.contains(targetDate)) habit.completedDates + targetDate else habit.completedDates
                     }
+
+                    val isToday = targetDate == LocalDate.now()
                     habit.copy(
-                        isCompletedToday = isCompleted,
+                        isCompletedToday = if (isToday) !isAlreadyCompleted else habit.isCompletedToday,
                         completedDates = updatedDates
                     )
                 } else {

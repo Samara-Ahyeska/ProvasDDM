@@ -1,6 +1,7 @@
 package com.example.prova4.ui.home
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -13,8 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,11 +26,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.prova4.data.model.Habit
 import com.example.prova4.data.model.HabitPeriod
+import com.example.prova4.data.model.matchesFrequency
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
 
-// Estrutura de dados para os dias da semana do calendário
 data class WeekDayItem(
     val date: LocalDate,
     val letter: String,
@@ -48,6 +47,7 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val primaryColor = Color(0xFF0F766E)
+    val backgroundColor = Color(0xFFF7F5EE)
 
     var selectedCategory by remember { mutableStateOf("Todas") }
     var selectedTab by remember { mutableStateOf("Todas") }
@@ -72,10 +72,10 @@ fun HomeScreen(
     }
 
     val userInitials = remember(uiState.userName) {
-        val parts = uiState.userName.trim().split("\\s+".toRegex())
+        val parts = uiState.userName.trim().split("\\s+".toRegex()).filter { it.isNotEmpty() }
         if (parts.size >= 2) {
             "${parts.first().take(1)}${parts.last().take(1)}".uppercase()
-        } else if (parts.isNotEmpty() && parts[0].isNotEmpty()) {
+        } else if (parts.isNotEmpty()) {
             parts[0].take(2).uppercase()
         } else {
             "SA"
@@ -83,18 +83,28 @@ fun HomeScreen(
     }
 
     val allHabits = uiState.pendingHabits + uiState.completedHabits
-    val totalCount = allHabits.size
-    val completedCount = uiState.completedHabits.size
-    val progressFraction = if (totalCount > 0) completedCount.toFloat() / totalCount.toFloat() else 0f
 
     val filteredHabits = allHabits.filter { habit ->
+        val matchesDate = matchesFrequency(
+            frequency = habit.frequency,
+            targetDate = selectedDate,
+            creationDate = habit.createdAt
+        )
         val matchesCategory = selectedCategory == "Todas" || habit.category.equals(selectedCategory, ignoreCase = true)
         val matchesTab = when (selectedTab) {
             "Pendentes" -> !habit.isCompletedToday
             "Concluídas" -> habit.isCompletedToday
             else -> true
         }
-        matchesCategory && matchesTab
+        matchesDate && matchesCategory && matchesTab
+    }
+
+    val totalCount = filteredHabits.size
+    val completedCount = filteredHabits.count { it.isCompletedToday }
+    val progressFraction = if (totalCount > 0) completedCount.toFloat() / totalCount.toFloat() else 0f
+
+    val categoriesList = remember(uiState.categories) {
+        if ("Todas" in uiState.categories) uiState.categories else listOf("Todas") + uiState.categories
     }
 
     Scaffold(
@@ -108,20 +118,20 @@ fun HomeScreen(
                 Icon(Icons.Default.Add, contentDescription = "Criar Hábito")
             }
         },
-        containerColor = Color(0xFFF7F5F0)
+        containerColor = backgroundColor
     ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Cabeçalho Dinâmico
+            // Cabeçalho
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -131,16 +141,16 @@ fun HomeScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = formattedHeaderDate,
-                            fontSize = 13.sp,
-                            color = Color.Gray,
-                            fontWeight = FontWeight.Medium
+                            fontSize = 14.sp,
+                            color = Color(0xFF6B7280),
+                            fontWeight = FontWeight.Normal
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Olá, ${uiState.userName}",
                             fontSize = 28.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1D1B20)
+                            color = Color(0xFF111827)
                         )
                     }
 
@@ -162,7 +172,7 @@ fun HomeScreen(
                 }
             }
 
-            // Barra de Dias da Semana com navegação de semanas
+            // Calendário Semanal com Navegação
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -174,13 +184,11 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         TextButton(onClick = { viewModel.previousWeek() }) {
-                            Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Semana Anterior", tint = primaryColor)
-                            Text("Semana anterior", fontSize = 12.sp, color = primaryColor)
+                            Text("‹ Semana anterior", fontSize = 12.sp, color = primaryColor)
                         }
 
                         TextButton(onClick = { viewModel.nextWeek() }) {
-                            Text("Próxima semana", fontSize = 12.sp, color = primaryColor)
-                            Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Próxima Semana", tint = primaryColor)
+                            Text("Próxima semana ›", fontSize = 12.sp, color = primaryColor)
                         }
                     }
 
@@ -191,32 +199,32 @@ fun HomeScreen(
                         weekDays.forEach { dayItem ->
                             Card(
                                 modifier = Modifier
-                                    .size(width = 42.dp, height = 64.dp)
+                                    .size(width = 44.dp, height = 72.dp)
                                     .clickable { viewModel.selectDate(dayItem.date) },
-                                shape = RoundedCornerShape(16.dp),
+                                shape = RoundedCornerShape(22.dp),
                                 colors = CardDefaults.cardColors(
                                     containerColor = if (dayItem.isSelected) primaryColor else Color.White
                                 ),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
+                                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                             ) {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .padding(vertical = 10.dp),
+                                        .padding(vertical = 12.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text(
                                         text = dayItem.letter,
-                                        fontSize = 11.sp,
-                                        color = if (dayItem.isSelected) Color.White.copy(alpha = 0.8f) else Color.Gray,
+                                        fontSize = 12.sp,
+                                        color = if (dayItem.isSelected) Color.White.copy(alpha = 0.8f) else Color(0xFF4B5563),
                                         fontWeight = FontWeight.Medium
                                     )
                                     Text(
                                         text = dayItem.number,
-                                        fontSize = 16.sp,
+                                        fontSize = 17.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (dayItem.isSelected) Color.White else Color(0xFF1D1B20)
+                                        color = if (dayItem.isSelected) Color.White else Color(0xFF111827)
                                     )
                                 }
                             }
@@ -225,13 +233,13 @@ fun HomeScreen(
                 }
             }
 
-            // Card de Progresso Circular
+            // Card de Progresso
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Row(
                         modifier = Modifier
@@ -241,85 +249,86 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(20.dp)
                     ) {
                         Box(
-                            modifier = Modifier.size(68.dp),
+                            modifier = Modifier.size(76.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator(
                                 progress = { 1f },
                                 modifier = Modifier.fillMaxSize(),
                                 color = Color(0xFFE5E7EB),
-                                strokeWidth = 8.dp
+                                strokeWidth = 9.dp
                             )
                             CircularProgressIndicator(
                                 progress = { progressFraction },
                                 modifier = Modifier.fillMaxSize(),
                                 color = primaryColor,
-                                strokeWidth = 8.dp
+                                strokeWidth = 9.dp
                             )
                             Text(
                                 text = "${(progressFraction * 100).toInt()}%",
-                                fontSize = 13.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1D1B20)
+                                color = Color(0xFF111827)
                             )
                         }
 
                         Column {
                             Text(
                                 text = "$completedCount de $totalCount hábitos feitos",
-                                fontSize = 17.sp,
+                                fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1D1B20)
+                                color = Color(0xFF111827)
                             )
-                            Spacer(modifier = Modifier.height(2.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = if (totalCount - completedCount > 0) "Faltam ${totalCount - completedCount} para fechar o dia" else "Parabéns, dia fechado! 🎉",
-                                fontSize = 13.sp,
-                                color = Color.Gray
+                                text = if (totalCount - completedCount > 0)
+                                    "Faltam ${totalCount - completedCount} para fechar o dia"
+                                else
+                                    "Parabéns, dia fechado! 🎉",
+                                fontSize = 14.sp,
+                                color = Color(0xFF6B7280)
                             )
                         }
                     }
                 }
             }
 
-            // Chips de Categorias Dinâmicas
+            // Categorias
             item {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    uiState.categories.forEach { category ->
+                    categoriesList.forEach { category ->
                         val isSelected = selectedCategory == category
-                        FilterChip(
-                            selected = isSelected,
-                            onClick = { selectedCategory = category },
-                            label = { Text(category) },
-                            shape = RoundedCornerShape(16.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = primaryColor,
-                                selectedLabelColor = Color.White,
-                                containerColor = Color.White,
-                                labelColor = Color(0xFF1D1B20)
-                            ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                enabled = true,
-                                selected = isSelected,
-                                borderColor = Color.LightGray,
-                                selectedBorderColor = primaryColor
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .clickable { selectedCategory = category },
+                            color = if (isSelected) primaryColor else Color.White,
+                            shape = RoundedCornerShape(50),
+                            border = if (isSelected) null else BorderStroke(1.dp, Color(0xFFD1D5DB))
+                        ) {
+                            Text(
+                                text = category,
+                                color = if (isSelected) Color.White else Color(0xFF374151),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
                             )
-                        )
+                        }
                     }
                 }
             }
 
-            // Abas de Status
+            // Abas
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFEFECE6))
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE5E7EB))
                 ) {
                     Row(
                         modifier = Modifier
@@ -332,7 +341,7 @@ fun HomeScreen(
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(36.dp)
+                                    .height(40.dp)
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(if (isSelected) Color.White else Color.Transparent)
                                     .clickable { selectedTab = tab },
@@ -340,9 +349,9 @@ fun HomeScreen(
                             ) {
                                 Text(
                                     text = tab,
-                                    fontSize = 13.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (isSelected) Color(0xFF1D1B20) else Color.Gray
+                                    fontSize = 14.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) Color(0xFF111827) else Color(0xFF6B7280)
                                 )
                             }
                         }
@@ -350,8 +359,12 @@ fun HomeScreen(
                 }
             }
 
-            // Seções por Período
-            val periods = listOf(HabitPeriod.MANHA to "MANHÃ", HabitPeriod.TARDE to "TARDE", HabitPeriod.NOITE to "NOITE")
+            // Lista por Período
+            val periods = listOf(
+                HabitPeriod.MANHA to "MANHÃ",
+                HabitPeriod.TARDE to "TARDE",
+                HabitPeriod.NOITE to "NOITE"
+            )
 
             periods.forEach { (periodEnum, periodTitle) ->
                 val habitsInPeriod = filteredHabits.filter { it.periods.contains(periodEnum) }
@@ -363,17 +376,16 @@ fun HomeScreen(
                             text = periodTitle,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Gray
+                            color = Color(0xFF6B7280),
+                            letterSpacing = 0.5.sp
                         )
                     }
 
                     items(habitsInPeriod) { habit ->
-                        OriginalHabitCardItem(
+                        HabitCardItem(
                             habit = habit,
                             primaryColor = primaryColor,
-                            onCardClick = {
-                                onNavigateToEditHabit(habit.id)
-                            },
+                            onCardClick = { onNavigateToEditHabit(habit.id) },
                             onCheckClick = { viewModel.toggleHabitCompletion(habit.id) }
                         )
                     }
@@ -388,7 +400,7 @@ fun HomeScreen(
 }
 
 @Composable
-fun OriginalHabitCardItem(
+fun HabitCardItem(
     habit: Habit,
     primaryColor: Color,
     onCardClick: () -> Unit,
@@ -397,14 +409,16 @@ fun OriginalHabitCardItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onCardClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp)
+            .clickable { onCardClick() }, // Permite abrir os detalhes sempre
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (habit.isCompletedToday) Color.White.copy(alpha = 0.85f) else Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -412,13 +426,13 @@ fun OriginalHabitCardItem(
             Row(
                 modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(10.dp)
+                        .size(12.dp)
                         .clip(CircleShape)
-                        .background(primaryColor)
+                        .background(if (habit.isCompletedToday) primaryColor.copy(alpha = 0.5f) else primaryColor)
                 )
 
                 Column {
@@ -426,13 +440,13 @@ fun OriginalHabitCardItem(
                         text = habit.title,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1D1B20)
+                        color = if (habit.isCompletedToday) Color(0xFF6B7280) else Color(0xFF111827)
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "${habit.streakDays} dias · ${habit.reminderTime.ifBlank { "Diário" }}",
-                        fontSize = 12.sp,
-                        color = Color.Gray
+                        text = "${habit.streakDays} dias · ${habit.reminderTime.ifBlank { "10:00" }}",
+                        fontSize = 13.sp,
+                        color = Color(0xFF6B7280)
                     )
                 }
             }
@@ -440,7 +454,7 @@ fun OriginalHabitCardItem(
             IconButton(
                 onClick = onCheckClick,
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(40.dp)
                     .background(
                         color = if (habit.isCompletedToday) primaryColor else Color.Transparent,
                         shape = CircleShape
@@ -451,17 +465,17 @@ fun OriginalHabitCardItem(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Concluir",
                         tint = Color.White,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 } else {
                     Box(
                         modifier = Modifier
-                            .size(24.dp)
+                            .size(28.dp)
                             .clip(CircleShape)
                     ) {
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             drawCircle(
-                                color = Color.LightGray,
+                                color = Color(0xFF9CA3AF),
                                 radius = size.minDimension / 2,
                                 style = Stroke(width = 2.dp.toPx())
                             )

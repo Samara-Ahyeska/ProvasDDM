@@ -2,6 +2,7 @@ package com.example.prova4.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.prova4.data.model.User
 import com.example.prova4.data.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,8 @@ class AuthViewModel(
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
     fun isUserLoggedIn(): Boolean = authRepository.currentUser != null
+
+    fun getCurrentUserData(): User? = authRepository.getCurrentUserData()
 
     fun login(email: String, pass: String) {
         if (email.isBlank() || pass.isBlank()) {
@@ -54,7 +57,6 @@ class AuthViewModel(
         }
     }
 
-    // Adicionado para suportar o encerramento de sessão na ProfileScreen / NavGraph
     fun logout() {
         authRepository.logout()
         _uiState.value = AuthUiState.Idle

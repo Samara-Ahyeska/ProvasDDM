@@ -1,68 +1,133 @@
 package com.example.prova4.ui.detail
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.prova4.data.model.HabitPeriod
+import com.example.prova4.ui.home.HomeViewModel
 import kotlinx.coroutines.delay
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditTimerHabitScreen(
     habitId: String,
     viewModel: DetailViewModel,
-    onNavigateBack: () -> Unit,
-    onNavigateToFullEdit: (String) -> Unit
+    homeViewModel: HomeViewModel,
+    onNavigateBack: () -> Unit
 ) {
-    val habit by viewModel.selectedHabit.collectAsState()
+    val selectedHabit by viewModel.selectedHabit.collectAsState()
+    val categoriesState by homeViewModel.uiState.collectAsState()
+
+    val primaryColor = Color(0xFF0F766E)
+    val timerColor = Color(0xFF8B5CF6)
+    val backgroundColor = Color(0xFFF7F5EE)
+
+    val frequencyOptions = listOf("Todo dia", "Dias úteis", "Fim de semana", "Somente hoje")
+
+    val habit = selectedHabit
+    val isReadOnly = habit?.isCompletedToday == true
+
+    // Estados do Timer e Formulário
+    var totalDurationSeconds by remember { mutableIntStateOf(15 * 60) }
+    var timeElapsedSeconds by remember { mutableIntStateOf(0) }
+    var isRunning by remember { mutableStateOf(false) }
+
+    var dailyNoteInput by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf("Mindfulness") }
+    val selectedPeriods = remember { mutableStateListOf(HabitPeriod.MANHA) }
+    var selectedFrequency by remember { mutableStateOf("Todo dia") }
+    var hasReminder by remember { mutableStateOf(true) }
+    var reminderTime by remember { mutableStateOf("10:00") }
+
+    // Diálogos
+    var showTimePickerDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showResetDialog by remember { mutableStateOf(false) }
+    var showEditGoalMinutesDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(habitId) {
         viewModel.loadHabit(habitId)
     }
 
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val timerColor = Color(0xFF8B5CF6) // Cor roxa característica do timer/meditação
-
-    var totalDurationSeconds by remember { mutableStateOf(15 * 60) } // Padrão 15 min
-    var timeElapsedSeconds by remember { mutableStateOf(0) } // Tempo já decorrido
-    var isRunning by remember { mutableStateOf(false) }
-    var isCompletedToday by remember { mutableStateOf(false) }
-    var dailyNote by remember { mutableStateOf("") }
-
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var showResetDialog by remember { mutableStateOf(false) }
-
-    // Inicializa os valores com base no hábito salvo
-    LaunchedEffect(habit) {
-        habit?.let {
-            val goalSeconds = if (it.durationMinutes > 0) it.durationMinutes * 60 else 15 * 60
+    LaunchedEffect(selectedHabit) {
+        selectedHabit?.let { h ->
+            val goalSeconds = if (h.durationMinutes > 0) h.durationMinutes * 60 else 15 * 60
             totalDurationSeconds = goalSeconds
-            timeElapsedSeconds = it.currentValue.coerceIn(0, goalSeconds)
+            timeElapsedSeconds = h.currentValue.coerceIn(0, goalSeconds)
 
-            // Se a nota salva for exatamente a mensagem padrão ou vazia, limpa para exibir o placeholder
-            dailyNote = if (it.dailyNote.isBlank() || it.dailyNote == "Nenhuma nota adicionada") "" else it.dailyNote
+            dailyNoteInput = if (h.dailyNote == "Nenhuma nota adicionada") "" else h.dailyNote
+            selectedCategory = h.category.ifBlank { "Mindfulness" }
 
-            isCompletedToday = it.isCompletedToday
+            selectedPeriods.clear()
+            if (h.periods.isNotEmpty()) {
+                selectedPeriods.addAll(h.periods)
+            } else {
+                selectedPeriods.add(HabitPeriod.MANHA)
+            }
+
+            selectedFrequency = h.frequency.ifBlank { "Todo dia" }
+            hasReminder = h.hasReminder
+            reminderTime = h.reminderTime.ifBlank { "10:00" }
         }
     }
 
-    // Lógica do Timer (Só roda se estiver ativo E se o hábito NÃO estiver concluído)
-    LaunchedEffect(isRunning, timeElapsedSeconds, isCompletedToday) {
-        if (isRunning && !isCompletedToday && timeElapsedSeconds < totalDurationSeconds) {
+    // Lógica Contínua do Timer
+    LaunchedEffect(isRunning, timeElapsedSeconds, isReadOnly) {
+        if (isRunning && !isReadOnly && timeElapsedSeconds < totalDurationSeconds) {
             delay(1000L)
             timeElapsedSeconds += 1
             if (timeElapsedSeconds >= totalDurationSeconds) {
@@ -82,219 +147,144 @@ fun EditTimerHabitScreen(
         String.format("%02d:%02d", mins, secs)
     }
 
+    val streakDays = remember(habit) {
+        if (habit == null) 0 else homeViewModel.calculateStreak(habit.completedDates, LocalDate.now())
+    }
+
+    val completionPercentage30Days = remember(habit) {
+        if (habit == null) 0 else {
+            val today = LocalDate.now()
+            val thirtyDaysAgo = today.minusDays(29)
+            val completedLast30Days = habit.completedDates.count { date ->
+                !date.isBefore(thirtyDaysAgo) && !date.isAfter(today)
+            }
+            ((completedLast30Days / 30.0) * 100).toInt()
+        }
+    }
+
+    val categories = remember(categoriesState.categories) {
+        categoriesState.categories.filter { it != "Todas" }.ifEmpty { listOf("Saúde", "Estudos", "Trabalho", "Mindfulness") }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = habit?.title ?: "Timer",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
-                            color = Color(0xFF1D1B20)
-                        )
-                        habit?.let {
-                            Text(
-                                text = "Meta: ${it.durationMinutes} minutos · ${it.category}",
-                                fontSize = 13.sp,
-                                color = Color.Gray
-                            )
-                        }
-                    }
-                },
+                title = { },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = Color(0xFF1D1B20))
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { onNavigateToFullEdit(habitId) }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Editar", tint = primaryColor)
-                    }
-                    IconButton(onClick = { showDeleteDialog = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Excluir", tint = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = {
+                        isRunning = false
+                        onNavigateBack()
+                    }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Voltar",
+                            tint = Color(0xFF4B5563)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "Voltar", color = Color(0xFF4B5563), fontSize = 16.sp)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        containerColor = Color(0xFFFBFBFA)
+        containerColor = backgroundColor
     ) { padding ->
-        habit?.let { currentHabit ->
-            Column(
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+
+
+            // Cabeçalho Hábito
+            Column(modifier = Modifier.clickable(enabled = !isReadOnly) { showEditGoalMinutesDialog = true }) {
+                Text(
+                    text = habit?.title ?: "Meditar",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF111827)
+                )
+                Text(
+                    text = "Meta: ${totalDurationSeconds / 60} minutos  · $selectedCategory",
+                    fontSize = 14.sp,
+                    color = timerColor,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            // Circular Progress Indicator do Timer
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clickable(enabled = !isReadOnly) { showEditGoalMinutesDialog = true },
+                contentAlignment = Alignment.Center
             ) {
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Gráfico Circular do Timer
-                Box(
-                    modifier = Modifier.size(200.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        progress = { 1f },
-                        modifier = Modifier.fillMaxSize(),
-                        color = Color(0xFFE5E7EB),
-                        strokeWidth = 14.dp
-                    )
-                    CircularProgressIndicator(
-                        progress = { progressFraction },
-                        modifier = Modifier.fillMaxSize(),
-                        color = if (isCompletedToday) primaryColor else timerColor,
-                        strokeWidth = 14.dp,
-                        strokeCap = StrokeCap.Round
-                    )
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = formatTime(timeElapsedSeconds),
-                            fontSize = 36.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1D1B20)
-                        )
-                        Text(
-                            text = if (isCompletedToday) "Hábito concluído" else "restam ${formatTime(timeRemainingSeconds)}",
-                            fontSize = 14.sp,
-                            color = Color.Gray
-                        )
-                    }
-                }
-
-                // Botões de Controle do Timer (Exibidos apenas se não estiver concluído)
-                if (!isCompletedToday) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedButton(
-                            onClick = { showResetDialog = true },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, Color.LightGray),
-                            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
-                        ) {
-                            Text(
-                                text = "Reiniciar",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.DarkGray
-                            )
-                        }
-
-                        Button(
-                            onClick = { isRunning = !isRunning },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = timerColor)
-                        ) {
-                            Text(
-                                text = if (isRunning) "Pausar" else "Iniciar",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
-
-                // Seção "Como foi?" (Nota sobre a sessão)
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
+                CircularProgressIndicator(
+                    progress = { 1f },
+                    modifier = Modifier.size(170.dp),
+                    color = Color(0xFFE5E7EB),
+                    strokeWidth = 14.dp
+                )
+                CircularProgressIndicator(
+                    progress = { progressFraction },
+                    modifier = Modifier.size(170.dp),
+                    color = if (isReadOnly) Color(0xFF9CA3AF) else timerColor,
+                    strokeWidth = 14.dp,
+                    strokeCap = StrokeCap.Round
+                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "Como foi?",
-                        fontSize = 13.sp,
+                        text = formatTime(timeElapsedSeconds),
+                        fontSize = 36.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Gray
+                        color = Color(0xFF111827)
                     )
-                    OutlinedTextField(
-                        value = dailyNote,
-                        onValueChange = { dailyNote = it },
-                        placeholder = { Text("Escreva uma nota sobre a sessão") },
-                        enabled = !isCompletedToday,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = timerColor,
-                            unfocusedBorderColor = Color.LightGray,
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White
-                        )
+                    Text(
+                        text = if (isReadOnly) "Hábito concluído" else "restam ${formatTime(timeRemainingSeconds)}",
+                        fontSize = 14.sp,
+                        color = Color(0xFF6B7280)
                     )
                 }
+            }
 
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Botões inferiores baseados no status de conclusão
-                if (!isCompletedToday) {
+            // Botões de Controle do Timer (Reiniciar / Pausar / Iniciar)
+            if (!isReadOnly) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     OutlinedButton(
-                        onClick = {
-                            isRunning = false
-                            val finalNote = if (dailyNote.isBlank()) "Nenhuma nota adicionada" else dailyNote
-                            viewModel.updateProgress(habitId, timeElapsedSeconds, finalNote)
-                            onNavigateBack()
-                        },
+                        onClick = { showResetDialog = true },
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
+                            .weight(1f)
+                            .height(54.dp),
                         shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, timerColor),
+                        border = BorderStroke(1.dp, Color(0xFFD1D5DB)),
                         colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
                     ) {
                         Text(
-                            text = "Salvar progresso",
-                            fontSize = 15.sp,
+                            text = "Reiniciar",
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = timerColor
+                            color = Color(0xFF374151)
                         )
                     }
 
                     Button(
-                        onClick = {
-                            isRunning = false
-                            val finalNote = if (dailyNote.isBlank()) "Nenhuma nota adicionada" else dailyNote
-                            viewModel.updateProgress(habitId, timeElapsedSeconds, finalNote)
-                            viewModel.toggleHabitCompletion(habitId)
-                            onNavigateBack()
-                        },
+                        onClick = { isRunning = !isRunning },
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .weight(1f)
                             .height(54.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
+                        colors = ButtonDefaults.buttonColors(containerColor = timerColor)
                     ) {
                         Text(
-                            text = "Concluir hábito",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
-                } else {
-                    Button(
-                        onClick = {
-                            viewModel.toggleHabitCompletion(habitId)
-                            onNavigateBack()
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
-                    ) {
-                        Text(
-                            text = "Retornar para pendente",
+                            text = if (isRunning) "Pausar" else "Iniciar",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -302,26 +292,332 @@ fun EditTimerHabitScreen(
                     }
                 }
             }
-        } ?: Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = primaryColor)
+
+            // Nota do Dia
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(text = "Como foi?", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
+                OutlinedTextField(
+                    value = dailyNoteInput,
+                    onValueChange = { dailyNoteInput = it },
+                    enabled = !isReadOnly,
+                    placeholder = { Text("Escreva uma nota sobre a sessão", color = Color.Gray, fontSize = 13.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 3,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        disabledContainerColor = Color(0xFFF3F4F6),
+                        focusedBorderColor = timerColor,
+                        unfocusedBorderColor = Color(0xFFE5E7EB)
+                    )
+                )
+            }
+
+            // Cards de Estatísticas SEPARADOS
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Card(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "$streakDays",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF111827)
+                        )
+                        Text(
+                            text = "dias seguidos",
+                            fontSize = 13.sp,
+                            color = Color(0xFF6B7280)
+                        )
+                    }
+                }
+
+                Card(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "$completionPercentage30Days%",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF111827)
+                        )
+                        Text(
+                            text = "últimos 30 dias",
+                            fontSize = 13.sp,
+                            color = Color(0xFF6B7280)
+                        )
+                    }
+                }
+            }
+
+            // Seleção de Categoria
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = "Categoria", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    categories.forEach { cat ->
+                        val isSelected = selectedCategory == cat
+                        Surface(
+                            modifier = Modifier.clickable(enabled = !isReadOnly) { selectedCategory = cat },
+                            color = if (isSelected) (if (isReadOnly) Color.Gray else primaryColor) else Color.White,
+                            shape = RoundedCornerShape(50),
+                            border = if (isSelected) null else BorderStroke(1.dp, Color(0xFFD1D5DB))
+                        ) {
+                            Text(
+                                text = cat,
+                                color = if (isSelected) Color.White else Color(0xFF374151),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Seleção de Frequência
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = "Frequência", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    frequencyOptions.forEach { freq ->
+                        val isSelected = selectedFrequency == freq
+                        Surface(
+                            modifier = Modifier.clickable(enabled = !isReadOnly) { selectedFrequency = freq },
+                            color = if (isSelected) (if (isReadOnly) Color.Gray else primaryColor) else Color.White,
+                            shape = RoundedCornerShape(50),
+                            border = if (isSelected) null else BorderStroke(1.dp, Color(0xFFD1D5DB))
+                        ) {
+                            Text(
+                                text = freq,
+                                color = if (isSelected) Color.White else Color(0xFF374151),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Seleção Múltipla de Períodos
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = "Período (selecione um ou mais)", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val periods = listOf(
+                        HabitPeriod.MANHA to "Manhã",
+                        HabitPeriod.TARDE to "Tarde",
+                        HabitPeriod.NOITE to "Noite"
+                    )
+                    periods.forEach { pair: Pair<HabitPeriod, String> ->
+                        val period = pair.first
+                        val label = pair.second
+                        val isSelected = selectedPeriods.contains(period)
+                        Surface(
+                            modifier = Modifier.clickable(enabled = !isReadOnly) {
+                                if (isSelected) {
+                                    if (selectedPeriods.size > 1) {
+                                        selectedPeriods.remove(period)
+                                    }
+                                } else {
+                                    selectedPeriods.add(period)
+                                }
+                            },
+                            color = if (isSelected) (if (isReadOnly) Color.Gray else primaryColor) else Color.White,
+                            shape = RoundedCornerShape(50),
+                            border = if (isSelected) null else BorderStroke(1.dp, Color(0xFFD1D5DB))
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (isSelected) Color.White else Color(0xFF374151),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Lembrete
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = !isReadOnly) { showTimePickerDialog = true },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(text = "Lembrete", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF111827))
+                        Text(text = "Horário: $reminderTime", fontSize = 13.sp, color = if (isReadOnly) Color.Gray else primaryColor)
+                    }
+                    Switch(
+                        checked = hasReminder,
+                        onCheckedChange = { if (!isReadOnly) hasReminder = it },
+                        enabled = !isReadOnly,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = primaryColor
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Botão Salvar Progresso
+            Button(
+                onClick = {
+                    if (!isReadOnly) {
+                        isRunning = false
+                        selectedHabit?.let { habitToSave ->
+                            val isCompleted = timeElapsedSeconds >= totalDurationSeconds
+                            viewModel.saveHabit(
+                                habitToSave.copy(
+                                    currentValue = timeElapsedSeconds,
+                                    durationMinutes = totalDurationSeconds / 60,
+                                    dailyNote = dailyNoteInput,
+                                    category = selectedCategory,
+                                    periods = selectedPeriods.toList(),
+                                    frequency = selectedFrequency,
+                                    hasReminder = hasReminder,
+                                    reminderTime = reminderTime,
+                                    isCompletedToday = isCompleted
+                                )
+                            )
+                            if (isCompleted) {
+                                homeViewModel.toggleHabitCompletion(habitToSave.id)
+                            }
+                        }
+                        onNavigateBack()
+                    }
+                },
+                enabled = !isReadOnly,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = primaryColor,
+                    disabledContainerColor = Color(0xFF9CA3AF)
+                )
+            ) {
+                Text(
+                    text = if (isReadOnly) "Hábito concluído" else "Salvar progresso",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+
+            // Botão Excluir Hábito
+            OutlinedButton(
+                onClick = { showDeleteConfirmDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color(0xFFB91C1C)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFB91C1C))
+            ) {
+                Text(
+                    text = "Excluir hábito",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 
-    // Diálogo de Confirmação para Reiniciar o Timer
+    // Modal de Edição da Meta do Timer
+    if (showEditGoalMinutesDialog && !isReadOnly) {
+        var inputMins by remember { mutableStateOf((totalDurationSeconds / 60).toString()) }
+        AlertDialog(
+            onDismissRequest = { showEditGoalMinutesDialog = false },
+            title = { Text("Alterar tempo da meta", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Digite o tempo da meta em minutos:", fontSize = 13.sp)
+                    OutlinedTextField(
+                        value = inputMins,
+                        onValueChange = { inputMins = it.filter { char -> char.isDigit() } },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val parsedMins = inputMins.toIntOrNull()?.coerceAtLeast(1) ?: (totalDurationSeconds / 60)
+                        totalDurationSeconds = parsedMins * 60
+                        timeElapsedSeconds = timeElapsedSeconds.coerceAtMost(totalDurationSeconds)
+                        showEditGoalMinutesDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = timerColor)
+                ) {
+                    Text("Confirmar", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditGoalMinutesDialog = false }) {
+                    Text("Cancelar", color = Color.Gray)
+                }
+            }
+        )
+    }
+
+    // Modal de Confirmação para Reiniciar o Timer
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
-            title = { Text("Reiniciar Timer") },
-            text = { Text("Tem certeza de que deseja reiniciar o timer? O progresso atual da sessão será zerado.") },
+            title = { Text("Reiniciar Timer", fontWeight = FontWeight.Bold) },
+            text = { Text("Tem certeza de que deseja reiniciar o timer? O tempo acumulado nesta sessão voltará a zero.") },
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         isRunning = false
                         timeElapsedSeconds = 0
                         showResetDialog = false
-                    }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = timerColor)
                 ) {
-                    Text("Sim, reiniciar", color = timerColor, fontWeight = FontWeight.Bold)
+                    Text("Sim, reiniciar", color = Color.White)
                 }
             },
             dismissButton = {
@@ -332,24 +628,41 @@ fun EditTimerHabitScreen(
         )
     }
 
-    if (showDeleteDialog) {
+    // Modal Confirmação de Exclusão
+    if (showDeleteConfirmDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Excluir Hábito") },
-            text = { Text("Deseja realmente excluir este hábito?") },
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("Excluir hábito", fontWeight = FontWeight.Bold) },
+            text = { Text("Tem certeza que deseja excluir este hábito?") },
             confirmButton = {
-                TextButton(onClick = {
-                    viewModel.deleteHabit(habitId)
-                    showDeleteDialog = false
-                    onNavigateBack()
-                }) {
-                    Text("Excluir", color = MaterialTheme.colorScheme.error)
+                Button(
+                    onClick = {
+                        viewModel.deleteHabit(habitId)
+                        showDeleteConfirmDialog = false
+                        onNavigateBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB91C1C))
+                ) {
+                    Text("Excluir", color = Color.White)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancelar")
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Cancelar", color = Color.Gray)
                 }
+            }
+        )
+    }
+
+    // Modal de Horário
+    if (showTimePickerDialog && !isReadOnly) {
+        CustomTimePickerDialog(
+            currentValue = reminderTime,
+            primaryColor = primaryColor,
+            onDismiss = { showTimePickerDialog = false },
+            onTimeSelected = { formattedTime: String ->
+                reminderTime = formattedTime
+                showTimePickerDialog = false
             }
         )
     }
