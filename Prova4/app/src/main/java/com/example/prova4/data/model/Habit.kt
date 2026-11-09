@@ -28,15 +28,12 @@ data class Habit(
     val dailyNote: String = "",
     val targetValue: Int = 0,
     val currentValue: Int = 0,
-    val durationMinutes: Int = 0, // Suporte completo para telas baseadas em timer
+    val durationMinutes: Int = 0,
     val unit: String = ""
 )
 
-/**
- * Função utilitária para verificar se o hábito deve aparecer em uma determinada data selecionada.
- */
+
 fun matchesFrequency(frequency: String, targetDate: LocalDate, creationDate: LocalDate): Boolean {
-    // Não exibe o hábito em datas anteriores à sua data de criação
     if (targetDate.isBefore(creationDate)) return false
 
     val dayOfWeek = targetDate.dayOfWeek

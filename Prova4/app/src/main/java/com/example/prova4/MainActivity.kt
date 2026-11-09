@@ -10,7 +10,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            HabitTrackerTheme { // <-- Usando a função correta definida no Theme.kt
+            HabitTrackerTheme {
                 NavGraph()
             }
         }

@@ -25,7 +25,7 @@ fun AuthScreen(
 
     LaunchedEffect(uiState) {
         if (uiState is AuthUiState.Success) {
-            // Busca o usuário logado diretamente do repositório/Firebase
+
             val currentUserData = authViewModel.getCurrentUserData()
 
             val finalName = if (isRegisterMode) {

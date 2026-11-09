@@ -82,7 +82,7 @@ fun CreateEditHabitScreen(
     val currentHabit = selectedHabit
     val isReadOnly = isEditing && currentHabit?.isCompletedToday == true
 
-    // Form State
+
     var nameInput by remember { mutableStateOf("") }
     var descriptionInput by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Saúde") }
@@ -91,7 +91,7 @@ fun CreateEditHabitScreen(
     var durationMinutesInput by remember { mutableStateOf("30") }
     var unitInput by remember { mutableStateOf("ml") }
 
-    // Suporte a Múltiplos Períodos
+
     val selectedPeriods = remember { mutableStateListOf(HabitPeriod.MANHA) }
 
     var selectedFrequency by remember { mutableStateOf("Todo dia") }
@@ -196,7 +196,7 @@ fun CreateEditHabitScreen(
                 color = Color(0xFF111827)
             )
 
-            // 1. Campo Nome
+
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(text = "Nome", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
                 OutlinedTextField(
@@ -216,7 +216,7 @@ fun CreateEditHabitScreen(
                 )
             }
 
-            // 2. Campo Descrição
+
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(text = "Descrição", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
                 OutlinedTextField(
@@ -237,7 +237,7 @@ fun CreateEditHabitScreen(
                 )
             }
 
-            // 3. Seleção de Categorias
+
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -344,7 +344,7 @@ fun CreateEditHabitScreen(
                 }
             }
 
-            // 4. Tipo de Hábito
+
             if (!isEditing) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(text = "Tipo de hábito", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
@@ -387,7 +387,7 @@ fun CreateEditHabitScreen(
                 }
             }
 
-            // 5. Campos Dinâmicos por Tipo
+
             if (selectedType == HabitType.NUMERICO) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -457,7 +457,7 @@ fun CreateEditHabitScreen(
                 }
             }
 
-            // 6. Frequência
+
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = "Frequência", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
                 Row(
@@ -486,7 +486,6 @@ fun CreateEditHabitScreen(
                 }
             }
 
-            // 7. Blocos Exclusivos de Edição
             if (isEditing) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -580,7 +579,7 @@ fun CreateEditHabitScreen(
                 }
             }
 
-            // 8. Período (SELEÇÃO MÚLTIPLA COM TIPAGEM EXPLÍCITA)
+
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = "Período (selecione um ou mais)", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -619,7 +618,7 @@ fun CreateEditHabitScreen(
                 }
             }
 
-            // 9. Lembrete Editável
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -653,7 +652,7 @@ fun CreateEditHabitScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 10. Botão Salvar / Criar Hábito
+
             Button(
                 onClick = {
                     if (!isReadOnly) {
@@ -708,7 +707,7 @@ fun CreateEditHabitScreen(
                 )
             }
 
-            // 11. Botão Excluir Hábito
+
             if (isEditing) {
                 OutlinedButton(
                     onClick = { showDeleteConfirmDialog = true },

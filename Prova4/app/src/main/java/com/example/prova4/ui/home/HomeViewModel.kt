@@ -40,7 +40,6 @@ class HomeViewModel(
         val currentSunday = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
         _uiState.update { it.copy(selectedDate = today, weekStartDate = currentSunday) }
 
-        // Carrega os dados reais do usuário do Firebase ao inicializar
         loadUserDataFromFirebase()
         observeData()
     }
@@ -133,7 +132,6 @@ class HomeViewModel(
         _uiState.update { state -> state.copy(weekStartDate = state.weekStartDate.plusWeeks(1)) }
     }
 
-    // Atualiza nome de exibição localmente e no Firebase de forma assíncrona
     fun updateUserName(newName: String) {
         _uiState.update { it.copy(userName = newName) }
         viewModelScope.launch {
@@ -141,7 +139,6 @@ class HomeViewModel(
         }
     }
 
-    // Atualiza o estado da UI com nome e e-mail
     fun updateUserProfile(newName: String, newEmail: String) {
         _uiState.update { it.copy(userName = newName, userEmail = newEmail) }
     }

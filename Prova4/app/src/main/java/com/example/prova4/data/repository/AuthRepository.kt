@@ -11,7 +11,7 @@ class AuthRepository(
 ) {
     val currentUser: FirebaseUser? get() = firebaseAuth.currentUser
 
-    // Retorna os dados do usuário atual mapeados para o nosso modelo
+
     fun getCurrentUserData(): User? {
         val user = firebaseAuth.currentUser ?: return User("", "", "")
         return User(
@@ -22,7 +22,6 @@ class AuthRepository(
         )
     }
 
-    // Realiza o login com e-mail e senha
     suspend fun login(email: String, pass: String): Result<FirebaseUser?> {
         return runCatching {
             val result = firebaseAuth.signInWithEmailAndPassword(email, pass).await()
@@ -30,7 +29,7 @@ class AuthRepository(
         }
     }
 
-    // Cria uma nova conta e opcionalmente define o nome de exibição
+
     suspend fun register(email: String, pass: String, name: String = ""): Result<FirebaseUser?> {
         return runCatching {
             val result = firebaseAuth.createUserWithEmailAndPassword(email, pass).await()
@@ -46,7 +45,6 @@ class AuthRepository(
         }
     }
 
-    // Atualiza o perfil do usuário (Nome de exibição, etc.)
     suspend fun updateProfile(newName: String): Result<Unit> {
         return runCatching {
             val user = firebaseAuth.currentUser ?: throw Exception("Nenhum usuário logado")
@@ -57,7 +55,7 @@ class AuthRepository(
         }
     }
 
-    // Encerra a sessão do usuário
+
     fun logout() {
         firebaseAuth.signOut()
     }

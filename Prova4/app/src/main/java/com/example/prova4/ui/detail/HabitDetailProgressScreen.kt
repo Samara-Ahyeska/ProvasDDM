@@ -91,8 +91,6 @@ fun HabitDetailProgressScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(10.dp))
-
-                // Gráfico Circular de Progresso exato conforme a imagem
                 Box(
                     modifier = Modifier.size(200.dp),
                     contentAlignment = Alignment.Center
@@ -126,8 +124,6 @@ fun HabitDetailProgressScreen(
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
-
-                // Botões de Menos e Mais (Incremento de 250ml)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -152,8 +148,6 @@ fun HabitDetailProgressScreen(
                         Text("+ 250 ${currentHabit.unit}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
-
-                // Seção Nota do dia
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -173,8 +167,6 @@ fun HabitDetailProgressScreen(
                         )
                     )
                 }
-
-                // Card de Ofensiva e Lembrete
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -202,8 +194,6 @@ fun HabitDetailProgressScreen(
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
-
-                // Botão Salvar progresso
                 Button(
                     onClick = {
                         viewModel.updateProgress(habitId, currentValue, dailyNote)

@@ -15,7 +15,7 @@ class HabitRemoteDataSource(
         .document(userId ?: "anonymous")
         .collection("habits")
 
-    // Buscar todos os hábitos do usuário no Firestore
+
     suspend fun fetchHabits(): List<Habit> {
         if (userId == null) return emptyList()
         val snapshot = getUserHabitsCollection().get().await()
@@ -24,13 +24,13 @@ class HabitRemoteDataSource(
         }
     }
 
-    // Salvar ou atualizar um hábito no Firestore
+
     suspend fun saveHabit(habit: Habit) {
         if (userId == null) return
         getUserHabitsCollection().document(habit.id).set(habit).await()
     }
 
-    // Deletar um hábito do Firestore
+
     suspend fun deleteHabit(habitId: String) {
         if (userId == null) return
         getUserHabitsCollection().document(habitId).delete().await()

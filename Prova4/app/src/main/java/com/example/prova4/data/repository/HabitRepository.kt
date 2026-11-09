@@ -9,7 +9,7 @@ import java.time.LocalDate
 
 class HabitRepository {
 
-    // Mantém os dados centralizados e compartilhados globalmente na aplicação
+
     companion object {
         private val _habits = MutableStateFlow<List<Habit>>(emptyList())
         private val _categories = MutableStateFlow<List<String>>(

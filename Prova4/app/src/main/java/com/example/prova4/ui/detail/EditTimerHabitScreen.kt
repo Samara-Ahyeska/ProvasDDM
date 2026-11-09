@@ -81,7 +81,6 @@ fun EditTimerHabitScreen(
     val habit = selectedHabit
     val isReadOnly = habit?.isCompletedToday == true
 
-    // Estados do Timer e Formulário
     var totalDurationSeconds by remember { mutableIntStateOf(15 * 60) }
     var timeElapsedSeconds by remember { mutableIntStateOf(0) }
     var isRunning by remember { mutableStateOf(false) }
@@ -93,7 +92,7 @@ fun EditTimerHabitScreen(
     var hasReminder by remember { mutableStateOf(true) }
     var reminderTime by remember { mutableStateOf("10:00") }
 
-    // Diálogos
+
     var showTimePickerDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
@@ -125,7 +124,7 @@ fun EditTimerHabitScreen(
         }
     }
 
-    // Lógica Contínua do Timer
+
     LaunchedEffect(isRunning, timeElapsedSeconds, isReadOnly) {
         if (isRunning && !isReadOnly && timeElapsedSeconds < totalDurationSeconds) {
             delay(1000L)
@@ -199,7 +198,7 @@ fun EditTimerHabitScreen(
         ) {
 
 
-            // Cabeçalho Hábito
+
             Column(modifier = Modifier.clickable(enabled = !isReadOnly) { showEditGoalMinutesDialog = true }) {
                 Text(
                     text = habit?.title ?: "Meditar",
@@ -215,7 +214,7 @@ fun EditTimerHabitScreen(
                 )
             }
 
-            // Circular Progress Indicator do Timer
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -251,7 +250,6 @@ fun EditTimerHabitScreen(
                 }
             }
 
-            // Botões de Controle do Timer (Reiniciar / Pausar / Iniciar)
             if (!isReadOnly) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -293,7 +291,6 @@ fun EditTimerHabitScreen(
                 }
             }
 
-            // Nota do Dia
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(text = "Como foi?", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
                 OutlinedTextField(
@@ -314,7 +311,6 @@ fun EditTimerHabitScreen(
                 )
             }
 
-            // Cards de Estatísticas SEPARADOS
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -368,7 +364,6 @@ fun EditTimerHabitScreen(
                 }
             }
 
-            // Seleção de Categoria
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = "Categoria", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
                 Row(
@@ -397,7 +392,6 @@ fun EditTimerHabitScreen(
                 }
             }
 
-            // Seleção de Frequência
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = "Frequência", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
                 Row(
@@ -426,7 +420,6 @@ fun EditTimerHabitScreen(
                 }
             }
 
-            // Seleção Múltipla de Períodos
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = "Período (selecione um ou mais)", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -465,7 +458,6 @@ fun EditTimerHabitScreen(
                 }
             }
 
-            // Lembrete
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -498,8 +490,6 @@ fun EditTimerHabitScreen(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-
-            // Botão Salvar Progresso
             Button(
                 onClick = {
                     if (!isReadOnly) {
@@ -544,7 +534,6 @@ fun EditTimerHabitScreen(
                 )
             }
 
-            // Botão Excluir Hábito
             OutlinedButton(
                 onClick = { showDeleteConfirmDialog = true },
                 modifier = Modifier
@@ -563,7 +552,6 @@ fun EditTimerHabitScreen(
         }
     }
 
-    // Modal de Edição da Meta do Timer
     if (showEditGoalMinutesDialog && !isReadOnly) {
         var inputMins by remember { mutableStateOf((totalDurationSeconds / 60).toString()) }
         AlertDialog(
@@ -602,7 +590,6 @@ fun EditTimerHabitScreen(
         )
     }
 
-    // Modal de Confirmação para Reiniciar o Timer
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
@@ -654,7 +641,7 @@ fun EditTimerHabitScreen(
         )
     }
 
-    // Modal de Horário
+
     if (showTimePickerDialog && !isReadOnly) {
         CustomTimePickerDialog(
             currentValue = reminderTime,

@@ -131,7 +131,6 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Cabeçalho
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -172,7 +171,6 @@ fun HomeScreen(
                 }
             }
 
-            // Calendário Semanal com Navegação
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -233,7 +231,6 @@ fun HomeScreen(
                 }
             }
 
-            // Card de Progresso
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -293,7 +290,6 @@ fun HomeScreen(
                 }
             }
 
-            // Categorias
             item {
                 Row(
                     modifier = Modifier
@@ -323,7 +319,6 @@ fun HomeScreen(
                 }
             }
 
-            // Abas
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -359,7 +354,6 @@ fun HomeScreen(
                 }
             }
 
-            // Lista por Período
             val periods = listOf(
                 HabitPeriod.MANHA to "MANHÃ",
                 HabitPeriod.TARDE to "TARDE",
@@ -409,7 +403,7 @@ fun HabitCardItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onCardClick() }, // Permite abrir os detalhes sempre
+            .clickable { onCardClick() },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (habit.isCompletedToday) Color.White.copy(alpha = 0.85f) else Color.White

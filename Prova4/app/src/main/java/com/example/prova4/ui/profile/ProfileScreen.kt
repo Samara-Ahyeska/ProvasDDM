@@ -61,8 +61,7 @@ fun ProfileScreen(
     val backgroundColor = Color(0xFFF7F5EE)
 
     var nameInput by remember { mutableStateOf(uiState.userName) }
-    // Exibe o e-mail real vindo do login/cadastro do usuário
-    val emailDisplay = uiState.userEmail.ifBlank { "usuario@email.com" }
+     val emailDisplay = uiState.userEmail.ifBlank { "usuario@email.com" }
 
     LaunchedEffect(uiState.userName) {
         nameInput = uiState.userName
@@ -146,7 +145,6 @@ fun ProfileScreen(
                 )
             }
 
-            // Nome de Exibição
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -172,7 +170,6 @@ fun ProfileScreen(
                 )
             }
 
-            // E-mail Cadastrado (NÃO EDITÁVEL)
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -198,7 +195,7 @@ fun ProfileScreen(
                 )
             }
 
-            // Cards de Métricas
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -299,7 +296,7 @@ fun ProfileScreen(
                 )
             }
 
-            // Sair da conta chamando o logout no ViewModel e redirecionando a navegação
+
             TextButton(
                 onClick = {
                     authViewModel.logout()

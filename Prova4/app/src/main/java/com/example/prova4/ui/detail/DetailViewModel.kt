@@ -38,7 +38,7 @@ class DetailViewModel(
     fun toggleHabitCompletion(habitId: String) {
         viewModelScope.launch {
             repository.toggleHabitCompletion(habitId)
-            loadHabit(habitId) // Atualiza o estado local após alternar
+            loadHabit(habitId)
         }
     }
 

@@ -85,7 +85,7 @@ fun EditNumericHabitScreen(
     var dailyNoteInput by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Saúde") }
 
-    // Suporte a Múltiplos Períodos
+
     val selectedPeriods = remember { mutableStateListOf(HabitPeriod.MANHA) }
 
     var selectedFrequency by remember { mutableStateOf("Todo dia") }
@@ -226,8 +226,6 @@ fun EditNumericHabitScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-
-            // Cabeçalho Hábito
             Column {
                 Text(
                     text = habit?.title ?: "Beber água",
@@ -243,7 +241,7 @@ fun EditNumericHabitScreen(
                 )
             }
 
-            // Gráfico Circular de Progresso
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -281,7 +279,7 @@ fun EditNumericHabitScreen(
                 }
             }
 
-            // Controles de Incremento e Decremento
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -330,7 +328,7 @@ fun EditNumericHabitScreen(
                 }
             }
 
-            // Nota do dia
+
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(text = "Nota do dia", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
                 OutlinedTextField(
@@ -351,7 +349,7 @@ fun EditNumericHabitScreen(
                 )
             }
 
-            // Cards de Estatísticas SEPARADOS
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -405,7 +403,7 @@ fun EditNumericHabitScreen(
                 }
             }
 
-            // Seleção de Categoria
+
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = "Categoria", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
                 Row(
@@ -434,7 +432,7 @@ fun EditNumericHabitScreen(
                 }
             }
 
-            // Frequência
+
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = "Frequência", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
                 Row(
@@ -463,7 +461,7 @@ fun EditNumericHabitScreen(
                 }
             }
 
-            // Período (SELEÇÃO MÚLTIPLA)
+
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = "Período (selecione um ou mais)", fontSize = 13.sp, color = Color(0xFF6B7280), fontWeight = FontWeight.Medium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -502,7 +500,7 @@ fun EditNumericHabitScreen(
                 }
             }
 
-            // Lembrete
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -536,7 +534,6 @@ fun EditNumericHabitScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Botão Salvar Progresso
             Button(
                 onClick = {
                     if (!isReadOnly) {
@@ -580,7 +577,7 @@ fun EditNumericHabitScreen(
                 )
             }
 
-            // Botão Excluir Hábito
+
             OutlinedButton(
                 onClick = { showDeleteConfirmDialog = true },
                 modifier = Modifier
