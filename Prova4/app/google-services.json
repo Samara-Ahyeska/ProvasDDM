@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "26495516493",
+    "project_id": "provaddm-a04ac",
+    "storage_bucket": "provaddm-a04ac.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:26495516493:android:66f58ca2723181a7430104",
+        "android_client_info": {
+          "package_name": "com.example.prova4"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAIabVWIcQpIFaE13lflbL8cHP1lKOoSHU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
