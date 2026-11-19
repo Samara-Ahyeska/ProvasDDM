@@ -8,6 +8,7 @@ sealed interface AuthUiState {
         val name: String,
         val email: String
     ) : AuthUiState
+    data class SmsCodeSent(val message: String) : AuthUiState
     data class Error(val message: String) : AuthUiState
     data class InfoMessage(val message: String) : AuthUiState
 }

@@ -19,7 +19,9 @@ class AuthRepository(
 
     suspend fun login(email: String, password: String): Result<String> = runCatching {
         val result = auth.signInWithEmailAndPassword(email.trim(), password).await()
-        result.user?.uid ?: throw IllegalStateException("Usuário não encontrado.")
+        val user = result.user ?: throw IllegalStateException("Usuário não encontrado.")
+        user.reload().await()
+        user.uid
     }
 
     suspend fun register(name: String, email: String, password: String): Result<String> = runCatching {
@@ -30,8 +32,13 @@ class AuthRepository(
             .setDisplayName(name.trim())
             .build()
         user.updateProfile(profileUpdates).await()
+        user.reload().await()
 
         user.uid
+    }
+
+    suspend fun reloadCurrentUser(): Result<Unit> = runCatching {
+        auth.currentUser?.reload()?.await()
     }
 
     suspend fun updatePasswordAndLogout(
@@ -55,6 +62,7 @@ class AuthRepository(
             .setDisplayName(newName.trim())
             .build()
         user.updateProfile(profileUpdates).await()
+        user.reload().await()
     }
 
     suspend fun sendPasswordReset(email: String): Result<Unit> = runCatching {

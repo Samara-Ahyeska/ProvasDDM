@@ -25,6 +25,21 @@ class AuthViewModel(
     )
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
+    init {
+        if (authRepository.currentUserId != null) {
+            viewModelScope.launch {
+                authRepository.reloadCurrentUser()
+                authRepository.currentUserId?.let { uid ->
+                    _uiState.value = AuthUiState.Authenticated(
+                        userId = uid,
+                        name = authRepository.currentUserName.orEmpty(),
+                        email = authRepository.currentUserEmail.orEmpty()
+                    )
+                }
+            }
+        }
+    }
+
     fun login(email: String, password: String) {
         if (!validateLoginInputs(email, password)) return
 
@@ -32,10 +47,11 @@ class AuthViewModel(
         viewModelScope.launch {
             authRepository.login(email, password)
                 .onSuccess { uid ->
+                    authRepository.reloadCurrentUser()
                     _uiState.value = AuthUiState.Authenticated(
                         userId = uid,
                         name = authRepository.currentUserName.orEmpty(),
-                        email = email.trim()
+                        email = authRepository.currentUserEmail ?: email.trim()
                     )
                 }
                 .onFailure {
@@ -53,8 +69,8 @@ class AuthViewModel(
                 .onSuccess { uid ->
                     _uiState.value = AuthUiState.Authenticated(
                         userId = uid,
-                        name = name.trim(),
-                        email = email.trim()
+                        name = authRepository.currentUserName ?: name.trim(),
+                        email = authRepository.currentUserEmail ?: email.trim()
                     )
                 }
                 .onFailure { error ->
@@ -87,7 +103,6 @@ class AuthViewModel(
                     onResult(Result.success(Unit))
                 }
                 .onFailure { error ->
-                    // Restaura o estado autenticado se o usuário ainda estiver logado
                     authRepository.currentUserId?.let { uid ->
                         _uiState.value = AuthUiState.Authenticated(
                             userId = uid,
@@ -119,9 +134,10 @@ class AuthViewModel(
         viewModelScope.launch {
             val result = authRepository.updateDisplayName(trimmedName)
             result.onSuccess {
+                val updatedName = authRepository.currentUserName ?: trimmedName
                 val current = _uiState.value
                 if (current is AuthUiState.Authenticated) {
-                    _uiState.value = current.copy(name = trimmedName)
+                    _uiState.value = current.copy(name = updatedName)
                 }
             }
             onResult(result)

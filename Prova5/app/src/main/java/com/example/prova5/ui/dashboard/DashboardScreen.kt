@@ -1,5 +1,6 @@
 package com.example.prova5.ui.dashboard
 
+import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,6 +45,8 @@ private val StatusYellowBg = Color(0xFFFFF6DF)
 private val StatusRed = Color(0xFFD93025)
 private val StatusRedBg = Color(0xFFFCE8E6)
 
+private const val PROFILE_PREFS_NAME = "user_profile_prefs"
+
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
@@ -56,10 +60,29 @@ fun DashboardScreen(
         callback(Result.success(Unit))
     }
 ) {
+    val context = LocalContext.current
+    val prefs = remember(context) {
+        context.getSharedPreferences(PROFILE_PREFS_NAME, Context.MODE_PRIVATE)
+    }
+    val nicknameKey = remember(userEmail, userName) {
+        val accountId = userEmail.trim().lowercase(Locale.ROOT).ifBlank { userName.trim() }
+        "nickname_$accountId"
+    }
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     var currentUserName by rememberSaveable(userName) { mutableStateOf(userName) }
-    var currentNickname by rememberSaveable { mutableStateOf("") }
+    var currentNickname by rememberSaveable(nicknameKey) {
+        mutableStateOf(prefs.getString(nicknameKey, "").orEmpty())
+    }
+
+    LaunchedEffect(userName) {
+        currentUserName = userName
+    }
+
+    LaunchedEffect(nicknameKey) {
+        currentNickname = prefs.getString(nicknameKey, "").orEmpty()
+    }
 
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var isAddingExpense by rememberSaveable { mutableStateOf(false) }
@@ -118,7 +141,9 @@ fun DashboardScreen(
             userEmail = userEmail,
             onBack = { isEditingProfile = false },
             onSaveProfile = { newName, newNickname, currentPassword, newPassword, onError ->
-                currentNickname = newNickname
+                val trimmedNickname = newNickname.trim()
+                currentNickname = trimmedNickname
+                prefs.edit().putString(nicknameKey, trimmedNickname).apply()
 
                 val applyNameAndClose = {
                     currentUserName = newName
