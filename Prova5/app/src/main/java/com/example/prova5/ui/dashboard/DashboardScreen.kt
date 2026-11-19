@@ -70,6 +70,10 @@ fun DashboardScreen(
     }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val cycleConfig by viewModel.cycleConfig.collectAsStateWithLifecycle()
+    val cycleStartMillis = remember(cycleConfig, uiState) {
+        viewModel.getCycleStartMillis()
+    }
 
     var currentUserName by rememberSaveable(userName) { mutableStateOf(userName) }
     var currentNickname by rememberSaveable(nicknameKey) {
@@ -139,6 +143,11 @@ fun DashboardScreen(
             currentName = currentUserName,
             currentNickname = currentNickname,
             userEmail = userEmail,
+            cycleConfig = cycleConfig,
+            cycleStartMillis = cycleStartMillis,
+            onCycleModeChange = { viewModel.setCycleMode(it) },
+            onAnchorDateChange = { viewModel.setAnchorDate(it) },
+            onResetCycleNow = { viewModel.resetCycleNow() },
             onBack = { isEditingProfile = false },
             onSaveProfile = { newName, newNickname, currentPassword, newPassword, onError ->
                 val trimmedNickname = newNickname.trim()

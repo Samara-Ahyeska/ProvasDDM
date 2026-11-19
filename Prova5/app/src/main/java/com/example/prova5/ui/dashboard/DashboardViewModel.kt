@@ -2,9 +2,12 @@ package com.example.prova5.ui.dashboard
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import com.example.prova5.data.model.BudgetCycleConfig
+import com.example.prova5.data.model.CycleResetMode
 import com.example.prova5.data.model.ExpenseCategory
 import com.example.prova5.data.model.ExpenseItem
 import com.example.prova5.data.model.PaymentMethod
+import com.example.prova5.data.model.computeCurrentCycleStart
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,10 +52,41 @@ class DashboardViewModel : ViewModel() {
 
     val categoriesList = mutableStateOf(ExpenseCategory.defaultList)
 
+    private val _cycleConfig = MutableStateFlow(BudgetCycleConfig())
+    val cycleConfig: StateFlow<BudgetCycleConfig> = _cycleConfig.asStateFlow()
+
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     init {
+        recalculateState()
+    }
+
+    fun getCycleStartMillis(nowMillis: Long = System.currentTimeMillis()): Long {
+        return computeCurrentCycleStart(config = _cycleConfig.value, nowMillis = nowMillis)
+    }
+
+    fun setCycleMode(mode: CycleResetMode) {
+        _cycleConfig.value = _cycleConfig.value.copy(
+            mode = mode,
+            cycleResetAtMillis = null
+        )
+        recalculateState()
+    }
+
+    fun setAnchorDate(anchorDateMillis: Long) {
+        _cycleConfig.value = _cycleConfig.value.copy(
+            anchorDateMillis = anchorDateMillis,
+            cycleResetAtMillis = null
+        )
+        recalculateState()
+    }
+
+    fun resetCycleNow(fromMillis: Long = System.currentTimeMillis()) {
+        _cycleConfig.value = _cycleConfig.value.copy(
+            anchorDateMillis = fromMillis,
+            cycleResetAtMillis = fromMillis
+        )
         recalculateState()
     }
 
@@ -110,13 +144,23 @@ class DashboardViewModel : ViewModel() {
     }
 
     private fun recalculateState() {
-        val rawMonth = SimpleDateFormat("MMMM yyyy", Locale("pt", "BR")).format(Date())
+        val nowMillis = System.currentTimeMillis()
+        val cycleStartMillis = computeCurrentCycleStart(
+            config = _cycleConfig.value,
+            nowMillis = nowMillis
+        )
+
+        val rawMonth = SimpleDateFormat("MMMM yyyy", Locale("pt", "BR")).format(Date(nowMillis))
         val formattedMonth = rawMonth.replaceFirstChar { it.uppercase() }
+
+        val activeCycleExpenses = expensesList.filter { it.timestamp >= cycleStartMillis }
 
         val budgetedCategories = categoriesList.value
             .filter { it.hasBudget }
             .map { cat ->
-                val spent = expensesList.filter { it.category.name == cat.name }.sumOf { it.amount }
+                val spent = activeCycleExpenses
+                    .filter { it.category.name == cat.name }
+                    .sumOf { it.amount }
                 val limit = budgetsMap[cat] ?: 0.0
                 val ratio = if (limit > 0.0) spent / limit else 0.0
                 val percentage = (ratio * 100).roundToInt()
@@ -151,10 +195,10 @@ class DashboardViewModel : ViewModel() {
             expenses = expensesList.toList()
         )
     }
+
     fun deleteCategoryBudget(category: ExpenseCategory) {
         budgetsMap.remove(category)
         categoriesList.value = categoriesList.value.filter { it.name != category.name }
-        expensesList.removeAll { it.category.name == category.name }
         recalculateState()
     }
 }

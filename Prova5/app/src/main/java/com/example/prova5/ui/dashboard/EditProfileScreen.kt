@@ -1,5 +1,6 @@
 package com.example.prova5.ui.dashboard
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,12 +14,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -26,6 +31,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.prova5.data.model.BudgetCycleConfig
+import com.example.prova5.data.model.CycleResetMode
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 private val EmeraldDark = Color(0xFF136F48)
 private val EmeraldSoftBg = Color(0xFFE3F2EB)
@@ -40,6 +51,11 @@ fun EditProfileScreen(
     currentName: String,
     currentNickname: String,
     userEmail: String,
+    cycleConfig: BudgetCycleConfig = BudgetCycleConfig(),
+    cycleStartMillis: Long = System.currentTimeMillis(),
+    onCycleModeChange: (CycleResetMode) -> Unit = {},
+    onAnchorDateChange: (Long) -> Unit = {},
+    onResetCycleNow: () -> Unit = {},
     onBack: () -> Unit,
     onSaveProfile: (
         newName: String,
@@ -50,6 +66,8 @@ fun EditProfileScreen(
     ) -> Unit,
     onLogout: () -> Unit
 ) {
+    val context = LocalContext.current
+
     var nameInput by remember { mutableStateOf(currentName) }
     var nicknameInput by remember { mutableStateOf(currentNickname) }
     var currentPasswordInput by remember { mutableStateOf("") }
@@ -57,6 +75,18 @@ fun EditProfileScreen(
     var currentPasswordVisible by remember { mutableStateOf(false) }
     var newPasswordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    var selectedMode by remember(cycleConfig.mode) { mutableStateOf(cycleConfig.mode) }
+    var selectedAnchorMillis by remember(cycleConfig.anchorDateMillis) { mutableStateOf(cycleConfig.anchorDateMillis) }
+    var showResetCycleDialog by remember { mutableStateOf(false) }
+    var cycleFeedback by remember { mutableStateOf<String?>(null) }
+
+    val dateFormatter = remember {
+        SimpleDateFormat("dd/MM/yyyy", Locale("pt", "BR"))
+    }
+    val formattedCycleStart = remember(cycleStartMillis, selectedMode, selectedAnchorMillis) {
+        dateFormatter.format(Date(cycleStartMillis))
+    }
 
     val previewInitial = remember(nicknameInput, nameInput, userEmail) {
         val base = nicknameInput.ifBlank { nameInput.ifBlank { userEmail } }.trim()
@@ -66,6 +96,76 @@ fun EditProfileScreen(
     val previewGreeting = remember(nicknameInput, nameInput) {
         val target = nicknameInput.trim().ifBlank { nameInput.trim().substringBefore(" ") }
         if (target.isNotBlank()) "Olá, $target!" else "Olá!"
+    }
+
+    fun openCalendarPicker(
+        initialMillis: Long,
+        onDateSelected: (millis: Long) -> Unit
+    ) {
+        val cal = Calendar.getInstance().apply { timeInMillis = initialMillis }
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val chosen = Calendar.getInstance().apply {
+                    set(Calendar.YEAR, year)
+                    set(Calendar.MONTH, month)
+                    set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                onDateSelected(chosen.timeInMillis)
+            },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
+    if (showResetCycleDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetCycleDialog = false },
+            containerColor = Color.White,
+            title = {
+                Text(
+                    text = "Iniciar novo ciclo hoje?",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextDark
+                )
+            },
+            text = {
+                Text(
+                    text = "Os gastos exibidos nos tetos deste ciclo passarão a contar a partir de hoje. Os valores dos limites e o histórico completo continuarão salvos.",
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    color = TextMuted
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showResetCycleDialog = false
+                        val now = System.currentTimeMillis()
+                        selectedAnchorMillis = now
+                        onResetCycleNow()
+                        cycleFeedback = "Novo ciclo iniciado hoje. Tetos zerados para o novo período."
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = EmeraldDark,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Confirmar", fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetCycleDialog = false }) {
+                    Text("Cancelar", color = TextMuted)
+                }
+            }
+        )
     }
 
     Surface(
@@ -111,7 +211,7 @@ fun EditProfileScreen(
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = "Personalize como o app chama você e atualize seus dados de acesso.",
+                text = "Personalize como o app chama você, ajuste o ciclo dos tetos e gerencie seus dados de acesso.",
                 fontSize = 13.sp,
                 color = TextMuted,
                 lineHeight = 18.sp
@@ -157,6 +257,195 @@ fun EditProfileScreen(
                             fontSize = 12.sp,
                             color = TextMuted
                         )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(22.dp))
+
+            Text(
+                text = "CICLO DE RENOVAÇÃO DOS TETOS",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextMuted,
+                letterSpacing = 0.8.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = Color.White,
+                border = BorderStroke(1.dp, CardBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(EmeraldSoftBg),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Refresh,
+                                contentDescription = null,
+                                tint = EmeraldDark,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Renovação automática",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextDark
+                            )
+                            Text(
+                                text = "Ciclo atual desde $formattedCycleStart",
+                                fontSize = 12.sp,
+                                color = EmeraldDark,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        ProfileCycleModeChip(
+                            title = "A cada 30 dias",
+                            subtitle = "Ciclo mensal",
+                            selected = selectedMode == CycleResetMode.EVERY_30_DAYS,
+                            onClick = {
+                                selectedMode = CycleResetMode.EVERY_30_DAYS
+                                cycleFeedback = null
+                                onCycleModeChange(CycleResetMode.EVERY_30_DAYS)
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ProfileCycleModeChip(
+                            title = "A cada 15 dias",
+                            subtitle = "Ideal para vale",
+                            selected = selectedMode == CycleResetMode.EVERY_15_DAYS,
+                            onClick = {
+                                selectedMode = CycleResetMode.EVERY_15_DAYS
+                                cycleFeedback = null
+                                onCycleModeChange(CycleResetMode.EVERY_15_DAYS)
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    val cycleDaysLabel = if (selectedMode == CycleResetMode.EVERY_30_DAYS) "30 dias" else "15 dias"
+                    val anchorFormatted = remember(selectedAnchorMillis) {
+                        dateFormatter.format(Date(selectedAnchorMillis))
+                    }
+
+                    Text(
+                        text = "Data base de início do ciclo de $cycleDaysLabel",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextMuted
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Surface(
+                        onClick = {
+                            openCalendarPicker(selectedAnchorMillis) { chosenMillis ->
+                                selectedAnchorMillis = chosenMillis
+                                cycleFeedback = null
+                                onAnchorDateChange(chosenMillis)
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        color = ScreenBg,
+                        border = BorderStroke(1.dp, CardBorder),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = if (selectedMode == CycleResetMode.EVERY_30_DAYS) {
+                                        Icons.Outlined.CalendarMonth
+                                    } else {
+                                        Icons.Outlined.Schedule
+                                    },
+                                    contentDescription = "Selecionar data no calendário",
+                                    tint = EmeraldDark,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "A cada $cycleDaysLabel desde $anchorFormatted",
+                                    fontSize = 13.sp,
+                                    color = TextDark
+                                )
+                            }
+                            Text(
+                                text = "Calendário",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = EmeraldDark
+                            )
+                        }
+                    }
+
+                    if (cycleFeedback != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = cycleFeedback!!,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = EmeraldDark
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(color = CardBorder, thickness = 1.dp)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Mantém limites e histórico",
+                            fontSize = 12.sp,
+                            color = TextMuted,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(
+                            onClick = { showResetCycleDialog = true },
+                            colors = ButtonDefaults.textButtonColors(contentColor = EmeraldDark)
+                        ) {
+                            Text(
+                                text = "Iniciar novo ciclo hoje",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -413,6 +702,40 @@ fun EditProfileScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ProfileCycleModeChip(
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(14.dp),
+        color = if (selected) EmeraldSoftBg else ScreenBg,
+        border = BorderStroke(if (selected) 1.5.dp else 1.dp, if (selected) EmeraldDark else CardBorder),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+        ) {
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (selected) EmeraldDark else TextDark
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                fontSize = 11.sp,
+                color = TextMuted
+            )
         }
     }
 }
