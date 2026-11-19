@@ -1,6 +1,6 @@
 package com.example.prova5.ui.auth
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -16,7 +16,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -25,6 +27,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.prova5.R
 
 private val EmeraldPrimary = Color(0xFF136F48)
 private val ScreenBackground = Color(0xFFF8F9FA)
@@ -71,6 +74,28 @@ fun AuthScreen(
 }
 
 @Composable
+private fun AppLogo(size: androidx.compose.ui.unit.Dp = 72.dp) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.ic_launcher_background),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize()
+        )
+        Image(
+            painter = painterResource(id = R.drawable.ic_launcher_foreground),
+            contentDescription = "Logo Essential Day",
+            modifier = Modifier
+                .fillMaxSize()
+                .scale(1.5f)
+        )
+    }
+}
+
+@Composable
 private fun LoginContent(
     uiState: AuthUiState,
     onLogin: (String, String) -> Unit,
@@ -93,25 +118,12 @@ private fun LoginContent(
     ) {
         Spacer(modifier = Modifier.weight(0.6f))
 
-        Box(
-            modifier = Modifier
-                .size(68.dp)
-                .clip(CircleShape)
-                .background(EmeraldPrimary),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "R$",
-                color = Color.White,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        AppLogo()
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Controle de Gastos",
+            text = "Essential Day",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
