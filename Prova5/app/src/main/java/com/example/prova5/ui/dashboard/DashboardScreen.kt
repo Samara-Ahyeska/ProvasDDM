@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -49,20 +48,36 @@ fun DashboardScreen(
     viewModel: DashboardViewModel,
     userName: String,
     userEmail: String,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onUpdateDisplayName: (String, (Result<Unit>) -> Unit) -> Unit = { _, callback ->
+        callback(Result.success(Unit))
+    },
+    onChangePasswordAndLogout: (String, String, (Result<Unit>) -> Unit) -> Unit = { _, _, callback ->
+        callback(Result.success(Unit))
+    }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    var currentUserName by rememberSaveable(userName) { mutableStateOf(userName) }
+    var currentNickname by rememberSaveable { mutableStateOf("") }
 
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var isAddingExpense by rememberSaveable { mutableStateOf(false) }
     var isAddingBudget by rememberSaveable { mutableStateOf(false) }
+    var isEditingProfile by rememberSaveable { mutableStateOf(false) }
     var editingCategoryCard by remember { mutableStateOf<CategoryCardUi?>(null) }
-    var showProfileDialog by remember { mutableStateOf(false) }
     var selectedCategoryFilter by rememberSaveable { mutableStateOf<ExpenseCategory?>(null) }
 
-    val initialLetter = remember(userName, userEmail) {
-        val base = userName.ifBlank { userEmail }.trim()
+    val initialLetter = remember(currentNickname, currentUserName, userEmail) {
+        val base = currentNickname.ifBlank { currentUserName.ifBlank { userEmail } }.trim()
         base.firstOrNull()?.uppercase() ?: "S"
+    }
+
+    val greetingText = remember(currentNickname, currentUserName) {
+        val displayName = currentNickname.trim().ifBlank {
+            currentUserName.trim().substringBefore(" ")
+        }
+        if (displayName.isNotBlank()) "Olá, $displayName!" else "Olá!"
     }
 
     if (isAddingExpense) {
@@ -94,6 +109,51 @@ fun DashboardScreen(
             onDelete = { category ->
                 viewModel.deleteCategoryBudget(category)
                 editingCategoryCard = null
+            }
+        )
+    } else if (isEditingProfile) {
+        EditProfileScreen(
+            currentName = currentUserName,
+            currentNickname = currentNickname,
+            userEmail = userEmail,
+            onBack = { isEditingProfile = false },
+            onSaveProfile = { newName, newNickname, currentPassword, newPassword, onError ->
+                currentNickname = newNickname
+
+                val applyNameAndClose = {
+                    currentUserName = newName
+                    onUpdateDisplayName(newName) { nameResult ->
+                        nameResult
+                            .onSuccess {
+                                if (newPassword != null) {
+                                    onChangePasswordAndLogout(currentPassword, newPassword) { passResult ->
+                                        passResult.onFailure { err ->
+                                            onError(err.message ?: "Erro ao alterar a senha.")
+                                        }
+                                    }
+                                } else {
+                                    isEditingProfile = false
+                                }
+                            }
+                            .onFailure { err ->
+                                onError(err.message ?: "Não foi possível atualizar o nome.")
+                            }
+                    }
+                }
+
+                if (newPassword != null && newName == currentUserName) {
+                    onChangePasswordAndLogout(currentPassword, newPassword) { passResult ->
+                        passResult.onFailure { err ->
+                            onError(err.message ?: "Erro ao alterar a senha.")
+                        }
+                    }
+                } else {
+                    applyNameAndClose()
+                }
+            },
+            onLogout = {
+                isEditingProfile = false
+                onLogout()
             }
         )
     } else {
@@ -131,8 +191,9 @@ fun DashboardScreen(
             when (selectedTab) {
                 0 -> PainelTabContent(
                     uiState = uiState,
+                    greetingText = greetingText,
                     initialLetter = initialLetter,
-                    onAvatarClick = { showProfileDialog = true },
+                    onAvatarClick = { isEditingProfile = true },
                     onCategoryClick = { category ->
                         selectedCategoryFilter = category
                         selectedTab = 1
@@ -143,7 +204,6 @@ fun DashboardScreen(
                     expenses = uiState.expenses,
                     categoryFilter = selectedCategoryFilter,
                     onClearFilter = { selectedCategoryFilter = null },
-                    onDelete = { viewModel.deleteExpense(it) },
                     modifier = Modifier.padding(innerPadding)
                 )
                 2 -> TetosTabContent(
@@ -157,41 +217,12 @@ fun DashboardScreen(
             }
         }
     }
-
-    if (showProfileDialog) {
-        AlertDialog(
-            onDismissRequest = { showProfileDialog = false },
-            title = { Text("Conta conectada", fontWeight = FontWeight.Bold) },
-            text = {
-                Column {
-                    if (userName.isNotBlank()) {
-                        Text(userName, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                    }
-                    Text(userEmail, color = TextMuted, fontSize = 14.sp)
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showProfileDialog = false
-                        onLogout()
-                    }
-                ) {
-                    Text("Sair da conta", color = StatusRed, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showProfileDialog = false }) {
-                    Text("Fechar", color = EmeraldDark)
-                }
-            }
-        )
-    }
 }
 
 @Composable
 private fun PainelTabContent(
     uiState: DashboardUiState,
+    greetingText: String,
     initialLetter: String,
     onAvatarClick: () -> Unit,
     onCategoryClick: (ExpenseCategory) -> Unit,
@@ -210,22 +241,22 @@ private fun PainelTabContent(
             ) {
                 Column {
                     Text(
-                        text = uiState.monthYearLabel,
-                        fontSize = 13.sp,
-                        color = TextMuted
+                        text = greetingText,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextDark
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Painel de gastos",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextDark
+                        text = "Painel de gastos · ${uiState.monthYearLabel}",
+                        fontSize = 13.sp,
+                        color = TextMuted
                     )
                 }
 
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(42.dp)
                         .clip(CircleShape)
                         .background(EmeraldSoftBg)
                         .clickable { onAvatarClick() },
@@ -235,7 +266,7 @@ private fun PainelTabContent(
                         text = initialLetter,
                         color = EmeraldDark,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        fontSize = 17.sp
                     )
                 }
             }
@@ -505,7 +536,6 @@ private fun HistoricoTabContent(
     expenses: List<ExpenseItem>,
     categoryFilter: ExpenseCategory?,
     onClearFilter: () -> Unit,
-    onDelete: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val filteredExpenses = remember(expenses, categoryFilter) {
@@ -515,6 +545,8 @@ private fun HistoricoTabContent(
             expenses
         }
     }
+
+    var selectedExpenseForDetails by remember { mutableStateOf<ExpenseItem?>(null) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -570,7 +602,10 @@ private fun HistoricoTabContent(
                     shape = RoundedCornerShape(16.dp),
                     color = Color.White,
                     border = BorderStroke(1.dp, CardBorder),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable { selectedExpenseForDetails = expense }
                 ) {
                     Row(
                         modifier = Modifier.padding(14.dp),
@@ -591,23 +626,112 @@ private fun HistoricoTabContent(
                                 color = TextMuted
                             )
                         }
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = formatCurrency(expense.amount),
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                             color = TextDark
                         )
-                        IconButton(onClick = { onDelete(expense.id) }) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Excluir",
-                                tint = StatusRed
-                            )
-                        }
                     }
                 }
             }
         }
+    }
+
+    if (selectedExpenseForDetails != null) {
+        ExpenseDetailsDialog(
+            expense = selectedExpenseForDetails!!,
+            onDismiss = { selectedExpenseForDetails = null }
+        )
+    }
+}
+
+@Composable
+private fun ExpenseDetailsDialog(
+    expense: ExpenseItem,
+    onDismiss: () -> Unit
+) {
+    val fullDateFormatted = remember(expense.timestamp) {
+        SimpleDateFormat("dd/MM/yyyy 'às' HH:mm", Locale("pt", "BR")).format(Date(expense.timestamp))
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(20.dp),
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(EmeraldSoftBg),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = expense.category.icon, fontSize = 20.sp)
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Detalhes da compra",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextDark
+                )
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                DetailRowItem(label = "Descrição", value = expense.description)
+                DetailRowItem(label = "Valor", value = formatCurrency(expense.amount), valueColor = EmeraldDark)
+                DetailRowItem(label = "Categoria", value = expense.category.title)
+                DetailRowItem(
+                    label = "Pagamento",
+                    value = if (expense.paymentDetails.isNotBlank()) {
+                        "${expense.paymentMethod.label} (${expense.paymentDetails})"
+                    } else {
+                        expense.paymentMethod.label
+                    }
+                )
+                DetailRowItem(label = "Data", value = fullDateFormatted)
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = EmeraldDark,
+                    contentColor = Color.White
+                )
+            ) {
+                Text("Fechar", fontWeight = FontWeight.SemiBold)
+            }
+        }
+    )
+}
+
+@Composable
+private fun DetailRowItem(
+    label: String,
+    value: String,
+    valueColor: Color = TextDark
+) {
+    Column {
+        Text(
+            text = label.uppercase(),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextMuted,
+            letterSpacing = 0.6.sp
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = valueColor
+        )
     }
 }
 
@@ -633,7 +757,6 @@ private fun TetosTabContent(
             )
         }
         items(categories, key = { it.category.name }) { item ->
-
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = Color.White,

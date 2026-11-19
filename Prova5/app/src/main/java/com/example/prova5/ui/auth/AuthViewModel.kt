@@ -4,6 +4,7 @@ import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.prova5.data.repository.AuthRepository
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -61,6 +62,69 @@ class AuthViewModel(
                         error.localizedMessage ?: "Não foi possível criar a conta."
                     )
                 }
+        }
+    }
+
+    fun updatePasswordAndLogout(
+        currentPassword: String,
+        newPassword: String,
+        onResult: (Result<Unit>) -> Unit
+    ) {
+        if (currentPassword.isBlank()) {
+            onResult(Result.failure(IllegalArgumentException("Informe sua senha atual.")))
+            return
+        }
+        if (newPassword.length < 6) {
+            onResult(Result.failure(IllegalArgumentException("A nova senha deve ter no mínimo 6 caracteres.")))
+            return
+        }
+
+        _uiState.value = AuthUiState.Loading
+        viewModelScope.launch {
+            authRepository.updatePasswordAndLogout(currentPassword, newPassword)
+                .onSuccess {
+                    _uiState.value = AuthUiState.Unauthenticated
+                    onResult(Result.success(Unit))
+                }
+                .onFailure { error ->
+                    // Restaura o estado autenticado se o usuário ainda estiver logado
+                    authRepository.currentUserId?.let { uid ->
+                        _uiState.value = AuthUiState.Authenticated(
+                            userId = uid,
+                            name = authRepository.currentUserName.orEmpty(),
+                            email = authRepository.currentUserEmail.orEmpty()
+                        )
+                    } ?: run {
+                        _uiState.value = AuthUiState.Unauthenticated
+                    }
+
+                    val friendlyMessage = when (error) {
+                        is FirebaseAuthInvalidCredentialsException ->
+                            "Senha atual incorreta."
+                        else ->
+                            error.localizedMessage ?: "Não foi possível alterar a senha."
+                    }
+                    onResult(Result.failure(IllegalStateException(friendlyMessage, error)))
+                }
+        }
+    }
+
+    fun updateDisplayName(newName: String, onResult: (Result<Unit>) -> Unit = {}) {
+        val trimmedName = newName.trim()
+        if (trimmedName.isBlank()) {
+            onResult(Result.failure(IllegalArgumentException("O nome não pode ficar em branco.")))
+            return
+        }
+
+        viewModelScope.launch {
+            val result = authRepository.updateDisplayName(trimmedName)
+            result.onSuccess {
+                val current = _uiState.value
+                if (current is AuthUiState.Authenticated) {
+                    _uiState.value = current.copy(name = trimmedName)
+                }
+            }
+            onResult(result)
         }
     }
 

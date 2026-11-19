@@ -1,5 +1,6 @@
 package com.example.prova5.data.repository
 
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.coroutines.tasks.await
@@ -31,6 +32,29 @@ class AuthRepository(
         user.updateProfile(profileUpdates).await()
 
         user.uid
+    }
+
+    suspend fun updatePasswordAndLogout(
+        currentPassword: String,
+        newPassword: String
+    ): Result<Unit> = runCatching {
+        val user = auth.currentUser ?: throw IllegalStateException("Usuário não autenticado.")
+        val email = user.email ?: throw IllegalStateException("E-mail do usuário não disponível.")
+
+        val credential = EmailAuthProvider.getCredential(email, currentPassword)
+        user.reauthenticate(credential).await()
+        user.updatePassword(newPassword).await()
+
+        // Desconecta automaticamente após alterar a senha com sucesso
+        auth.signOut()
+    }
+
+    suspend fun updateDisplayName(newName: String): Result<Unit> = runCatching {
+        val user = auth.currentUser ?: throw IllegalStateException("Usuário não autenticado.")
+        val profileUpdates = UserProfileChangeRequest.Builder()
+            .setDisplayName(newName.trim())
+            .build()
+        user.updateProfile(profileUpdates).await()
     }
 
     suspend fun sendPasswordReset(email: String): Result<Unit> = runCatching {

@@ -26,7 +26,13 @@ class MainActivity : ComponentActivity() {
                         viewModel = dashboardViewModel,
                         userName = state.name,
                         userEmail = state.email,
-                        onLogout = { authViewModel.logout() }
+                        onLogout = { authViewModel.logout() },
+                        onUpdateDisplayName = { newName, onResult ->
+                            authViewModel.updateDisplayName(newName, onResult)
+                        },
+                        onChangePasswordAndLogout = { currentPassword, newPassword, onResult ->
+                            authViewModel.updatePasswordAndLogout(currentPassword, newPassword, onResult)
+                        }
                     )
                 }
                 else -> {
